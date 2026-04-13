@@ -1,0 +1,66 @@
+\section{Формальное определение.}
+
+\subsection{Определение состязательной атаки}
+\begin{frame}
+    \frametitle{Модель машинного обучения.}
+    Пусть $x \in X$~-- это множество входных данных, $y \in Y$~-- это множество выходов, тогда модель машинного обучения это:
+    \[
+        f \colon X \to Y,
+    \]
+    где $X \in \mathbb{R}^{d}$, а $Y \in \mathbb{R}^{n}$.
+\end{frame}
+
+\begin{frame}
+    \frametitle{Формальное определение состязательной атаки}
+    \begin{definition*}
+        \begin{itemize}
+            \item Пусть дан экземпляр входных данных $x \in \mathbb{R}^{n}$ и классификатор $f : \mathbb{R}^n \to \{1, \dots, k\}$, тогда \textbf{состязательный пример} это $x' = x + \delta$ такой, что $f(x) = y$, $f(x') = y'$ и $y \neq y'$, где $\delta$~-- небольшое возмущение~\textsuperscript{\fnsymbolNum{1}}.
+            \item При этом $y'$ может быть равен какому-то определенному классу и тогда это \textbf{<<целевая атака>>} или может быть любым другим, отличным от $y$~-- тогда это \textbf{<<не целевая атака>>}.
+        \end{itemize}
+    \end{definition*}
+    \footnotetext[1]{Intriguing properties of neural networks / C. Szegedy [и др.].—02.2014.—URL:http://arxiv.org/abs/1312.6199(дата обр. 19.06.2024); arXiv:1312.6199 [cs].}
+\end{frame}
+
+\subsection{Робастность}
+\begin{frame}[fragile]
+    \frametitle{Пример кода на Python.}
+    \begin{example*}[исходное состояние]
+        \begin{columns}[onlytextwidth,t]
+            \begin{column}{0.5\textwidth}
+                \begin{minted}[gobble=10]{python}
+                def frac(x, y):
+                    result = x/y
+                    return result
+                \end{minted}
+            \end{column}
+            \begin{column}{0.5\textwidth}
+                \begin{minted}{python}
+                def get_pred(x):
+                    result = model(x)
+                    return result
+                \end{minted}
+            \end{column}
+        \end{columns}
+    \end{example*}
+    \begin{example*}[добавили проверки]
+        \begin{columns}[onlytextwidth,t]
+            \begin{column}{0.5\textwidth}
+                \begin{minted}[gobble=10]{python}
+                def frac(x, y):
+                    if isinstance(x, (int, float)) and x > 0:
+                        return x/y
+                    else:
+                        return None
+                \end{minted}
+            \end{column}
+            \begin{column}{0.5\textwidth}
+                \begin{minted}{python}
+                def get_pred(x):
+                    result = model(x)
+                    return result
+                \end{minted}
+            \end{column}
+        \end{columns}
+    \end{example*}
+\end{frame}
+

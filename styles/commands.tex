@@ -1,0 +1,77 @@
+%!TEX root = ../lecture_2.tex
+
+%\titlegraphic {
+%    \begin{tikzpicture}[overlay,remember picture]
+%        \node[right=0.2cm] at (current page.150){\includegraphics[width=3cm]{Beamer-Logo}
+%            \node[left=0.2cm] at (current page.30){\includegraphics[width=3cm]{Beamer-Logo}
+%            };
+%    \end{tikzpicture}
+%}
+
+
+\newcommand*{\LogoLeft}{
+    \logo{
+        \begin{tikzpicture}[overlay,remember picture]
+            \node[right=0.2cm] at (current page.155){\includegraphics[width=1.5cm]{./images/logo_white.png}};
+            \node[left=0.2cm] at (current page.26){\includegraphics[width=2.5cm]{./images/department_logo_white.png}};
+        \end{tikzpicture}
+    }
+}
+
+\newcommand*{\LogoRight}{
+    \logo{
+        \begin{tikzpicture}[overlay,remember picture]
+            \node[left=0.2cm] at (current page.26){\includegraphics[width=1.0cm]{./images/logo_black.png}};
+            \node[left=0.2cm] at (current page.335){\includegraphics[width=2.7cm]{./images/department_logo_black.png}};
+        \end{tikzpicture}
+
+    }
+}
+
+% Возможность использовать автонумерацию
+\newcounter{index}
+\newcommand*{\No}{\noindent\refstepcounter{index}\textnumero~\theindex}
+\newcommand*{\Index}{\refstepcounter{index}\theindex}
+
+%%% Русская традиция начертания математических знаков
+\renewcommand{\le}{\ensuremath{\leqslant}}
+\renewcommand{\leq}{\ensuremath{\leqslant}}
+\renewcommand{\ge}{\ensuremath{\geqslant}}
+\renewcommand{\geq}{\ensuremath{\geqslant}}
+\renewcommand{\emptyset}{\varnothing}
+
+%%% Русская традиция начертания математических функций
+\renewcommand{\tan}{\operatorname{tg}}
+\renewcommand{\cot}{\operatorname{ctg}}
+\renewcommand{\csc}{\operatorname{cosec}}
+%%% Русская традиция начертания греческих букв (пакет upgreek)
+\renewcommand{\epsilon}{\ensuremath{\upvarepsilon}}   %  русская традиция записи
+\renewcommand{\phi}{\ensuremath{\upvarphi}}
+\renewcommand{\kappa}{\ensuremath{\varkappa}}
+\renewcommand{\alpha}{\ensuremath{\upalpha}}
+\renewcommand{\beta}{\ensuremath{\upbeta}}
+\renewcommand{\gamma}{\ensuremath{\upgamma}}
+\renewcommand{\delta}{\ensuremath{\updelta}}
+\renewcommand{\varepsilon}{\ensuremath{\upvarepsilon}}
+\renewcommand{\zeta}{\ensuremath{\upzeta}}
+\renewcommand{\eta}{\ensuremath{\upeta}}
+\renewcommand{\theta}{\ensuremath{\uptheta}}
+\renewcommand{\vartheta}{\ensuremath{\upvartheta}}
+\renewcommand{\iota}{\ensuremath{\upiota}}
+\renewcommand{\kappa}{\ensuremath{\upkappa}}
+\renewcommand{\lambda}{\ensuremath{\uplambda}}
+\renewcommand{\mu}{\ensuremath{\upmu}}
+\renewcommand{\nu}{\ensuremath{\upnu}}
+\renewcommand{\xi}{\ensuremath{\upxi}}
+\renewcommand{\pi}{\ensuremath{\uppi}}
+\renewcommand{\varpi}{\ensuremath{\upvarpi}}
+\renewcommand{\rho}{\ensuremath{\uprho}}
+\renewcommand{\varrho}{\ensuremath{\upvarrho}}
+\renewcommand{\sigma}{\ensuremath{\upsigma}}
+\renewcommand{\varsigma}{\ensuremath{\upvarsigma}}
+\renewcommand{\tau}{\ensuremath{\uptau}}
+\renewcommand{\upsilon}{\ensuremath{\upupsilon}}
+\renewcommand{\varphi}{\ensuremath{\upvarphi}}
+\renewcommand{\chi}{\ensuremath{\upchi}}
+\renewcommand{\psi}{\ensuremath{\uppsi}}
+\renewcommand{\omega}{\ensuremath{\upomega}}
