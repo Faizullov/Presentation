@@ -216,7 +216,7 @@ B \in \mathbb{R}^{d \times r}, \qquad A \in \mathbb{R}^{r \times k}, \qquad r \l
 
 \end{frame}
 
-\section{Reward Model}
+\section*{Reward Model}
 
 \begin{frame}{Length Bias в Reward Model}
     \begin{center}
@@ -364,6 +364,55 @@ B \in \mathbb{R}^{d \times r}, \qquad A \in \mathbb{R}^{r \times k}, \qquad r \l
     Gifts Holder Gifts Holder Gifts Holder Gifts Holder
     Gifts Holder Gifts Holder Gifts Holder Gifts Holder...}
     
+\end{frame}
+
+\begin{frame}{DeepSeek-Llama-8B: RM + cost penalty, 1024 токена}
+    \vspace{-0.2cm}
+    $$R = RM(\text{content}) - \alpha \cdot N_{\text{tokens}}, \quad \alpha = 0.02$$
+    \centering\small RM: RewardModel (BERT, 109M)
+
+    \begin{columns}
+        \begin{column}{0.36\textwidth}
+            \begin{figure}
+                \includegraphics[width=\textwidth]{deepseek_think_rate_eval_B3.png}
+            \end{figure}
+        \end{column}
+        \begin{column}{0.36\textwidth}
+            \begin{figure}
+                \includegraphics[width=\textwidth]{deepseek_think_len_eval_B3.png}
+            \end{figure}
+        \end{column}
+        \begin{column}{0.36\textwidth}
+            \begin{figure}
+                \includegraphics[width=\textwidth]{deepseek_rm_score_eval_B3.png}
+            \end{figure}
+        \end{column}
+    \end{columns}
+
+    \vspace{0.3cm}
+    \textbf{Вывод:} при бюджете 1024 токена RM Score вырос,
+    но accuracy упало до 80\%.
+\end{frame}
+
+\begin{frame}[fragile]{Примеры деградации: 1024 токена}
+\small
+\textbf{1. Неправильный ответ после долгих рассуждений, часть reasoning вышло в content:}
+
+\vspace{0.15cm}
+\begin{verbatim}
+<think>
+First, I will calculate the total north and south steps...
+Next, I will calculate the total east and west steps...
+Since there is no net movement in the north-south direction and ... , the final position is ...
+</think>
+
+To determine if you return to the starting point, let's analyze the movements:
+1. North and South Steps: ... (2 - 2 = 0)
+2. East and West Steps: ... (3 + 1 = 4), so (4 - 4 = 0)
+
+Since there is no net movement in either direction, you do not return to the starting point.
+[No]
+\end{verbatim}
 \end{frame}
 
 \section{Вывод}
