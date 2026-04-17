@@ -1,134 +1,198 @@
 \section{Актуальность}
-
-\begin{frame}{Введение}
-    LLM-агенты всё шире применяются для принятия решений 
-    в критических областях: медицина, финансы, право, управление инфраструктурой.
+\begin{frame}{Актуальность}
+    Языковые модели всё шире применяются как автономные агенты 
+    в критических областях: медицина, финансы.
     
-    \vspace{0.4cm}
+    \vspace{0.3cm}
     Поведение агентов формируется через \textbf{функцию вознаграждения} --- 
     числовую оценку качества их действий. 
     Однако любая функция вознаграждения --- лишь \textbf{приближение} 
     реальных целей человека.
     
-    \vspace{0.4cm}
-    \textbf{Reward hacking} --- ситуация при которой агент находит способ 
-    максимизировать вознаграждение, \textbf{не выполняя} поставленную задачу.
+    \vspace{0.3cm}
+    \textbf{Захват вознаграждения} --- ситуация, при которой агент 
+    находит способ максимизировать оценку, 
+    \textbf{не выполняя} поставленную задачу.
     
-    \vspace{0.4cm}
-    \textbf{Почему это опасно:}
-    \begin{itemize}
-        \item Все метрики показывают улучшение --- деградация \textbf{невидима}
-        \item Проблема проявляется только при реальном использовании
-    \end{itemize}
 \end{frame}
 
 \section{Цель и задачи}
-
-\begin{frame}{Цели и задачи исследования}
+\begin{frame}{Цель и задачи}
     \textbf{Цель настоящего исследования:}
     \begin{itemize}
-        \item Исследование сценария захвата контроля над механизмом вознаграждения в LLM-агентах
+        \item[$\blacktriangleright$] Исследование устойчивости механизмов вознаграждения 
+        в интеллектуальных агентах к смещению по длине ответа
     \end{itemize}
     
     \vspace{0.5cm}
     \textbf{Задачи:}
     \begin{enumerate}
-        \item Выявить, при применении каких практик может возникать взлом вознаграждения.
-        \item Проанализировать reward models как источник уязвимости
-        \item Реализовать эксперименты с захватом вознаграждения
-        \item Выявить и классифицировать паттерны деградации при захвате вознаграждения
+        \item Провести анализ научно-технической литературы 
+              и систематизировать известные уязвимости 
+              механизмов вознаграждения
+        \item Проанализировать модель вознаграждения 
+              как источник уязвимости
+        \item Разработать экспериментальный стенд 
+              для проведения пентеста механизмов вознаграждения
+        \item Провести пентест на моделях разного размера 
+              и архитектуры
+        \item Выявить и классифицировать паттерны деградации 
+              при захвате вознаграждения
     \end{enumerate}
 \end{frame}
 
-\section{Обзор RLHF}
+\section{Обзор существующих решений}
 \begin{frame}{Обзор существующих решений}
-    \begin{figure}[!ht]
-    \includegraphics[width=0.72\textwidth]{rlhf.png}
-    \end{figure}
-    Основные этапы RLHF
-    \begin{enumerate}
-        \item Оценка ответов модели человеком 
-        \item Обучение модели вознаграждения (RM)
-        \item Обнововление LLM
-    \end{enumerate}
+    Современные языковые модели могут проводить 
+    \textbf{скрытые рассуждения} перед выдачей ответа:
+    
+    \vspace{0.3cm}
+    \texttt{%
+    <think>\\
+    ~~~~Задача: 12 + 6 * 3 - 4 / 2\\
+    ~~~~Сначала умножение: 6 * 3 = 18\\
+    ~~~~Потом деление: 4 / 2 = 2\\
+    ~~~~Итого: 12 + 18 - 2 = 28\\
+    </think>\\
+    Ответ: 28}
+    
+    \vspace{0.3cm}
+    \begin{itemize}
+        \item Содержимое \texttt{<think>} скрыто от пользователя
+        \item Рассуждения повышают точность на сложных задачах
+    \end{itemize}
+    
+    \vspace{0.3cm}
+    \textbf{Примеры:} DeepSeek-R1, Qwen3
 \end{frame}
 
-
-\begin{frame}{Обучение Reward Model}
-    \begin{figure}[!ht]
-    \includegraphics[width=0.8\textwidth]{reward_train.jpeg}
-    \end{figure}
-\end{frame}
-
-\begin{frame}{REINFORCE: обновление политики по reward}
-\small
-
-\textbf{Цель:} увеличить ожидаемый reward модели
-\[
-J(\theta) = \mathbb{E}_{y \sim \pi_\theta(\cdot|x)}[R(y)]
-\]
-
-\vspace{0.2cm}
-\textbf{Градиент REINFORCE:}
-\[
-\nabla_\theta J
-=
-\mathbb{E}\left[(R - b)\,\nabla_\theta \log \pi_\theta(y|x)\right]
-\]
-
-\vspace{0.2cm}
-\textbf{Лог-вероятность ответа:}
-\[
-\log \pi_\theta(y|x)
-=
-\sum_{i=1}^{N}
-\log \pi_\theta(t_i \mid t_1,\ldots,t_{i-1},x)
-\]
-
-\begin{itemize}
-    \item $x$ --- входной запрос
-    \item $y=(t_1,\dots,t_N)$ --- сгенерированный ответ
-    \item $R$ --- reward для всего ответа
-    \item $b$ --- baseline для снижения дисперсии:
-    \[
-    b \leftarrow 0.9\,b + 0.1\,\bar{R}
-    \]
-    \item $t_i$ --- $i$-й токен ответа, $N$ --- длина ответа
-\end{itemize}
-
-\vspace{0.2cm}
-\textbf{Интерпретация:}
-\begin{itemize}
-    \item если $R>b$, вероятность такой траектории увеличивается
-    \item если $R<b$, вероятность такой траектории уменьшается
-    \item reward задаётся для всего ответа, а градиент распространяется на все его токены
-\end{itemize}
+\begin{frame}{Обзор литературы}
+    \begin{table}[h]
+    \centering
+    \footnotesize
+    \begin{tabular}{p{3.2cm}p{7cm}}
+        \hline
+        \textbf{Работа} & \textbf{Результат} \\
+        \hline
+        Singhal и др., 2024 & Вознаграждение, основанное только на длине, воспроизводит большинство улучшений дообучения с подкреплением \\
+        Shen и др., 2023 & Аннотаторы и модели систематически предпочитают длинные ответы \\
+        Saito и др., 2023 & После дообучения модели увеличивают длину ответа на 30--50\% без роста качества \\
+        FiMi-RM, 2025 & Зависимость оценки от длины нелинейна --- функция насыщения \\
+        Park и др., 2024 & Модели вознаграждения не различают качественный длинный ответ от мусорного \\
+        \hline
+    \end{tabular}
+    \end{table}
 \end{frame}
 
 \section{Выводы из обзора}
-\begin{frame}{Выводы из обзора}
-\begin{itemize}
-    \item Усиление языковых моделей с помощью обучения с подкреплением по человеческой обратной связи (\textbf{RLHF}) позволяет добиваться более управляемого и полезного поведения моделей.
+\begin{frame}{Выводы из обзора и требования к методологии}
+    \textbf{Выводы из обзора:}
+    \begin{enumerate}
+        \item Смещение по длине --- системная проблема дообучения с подкреплением
+        \item Влияние на модели с внутренними рассуждениями не исследовано
+    \end{enumerate}
     
-    \item Однако даже при наличии человеческой оценки возможно возникновение побочных эффектов, в частности \textbf{захвата вознаграждения} (\textbf{reward hacking}), при котором модель оптимизирует не то поведение, которое от неё ожидается.
-
-    \item Одним из наиболее распространённых проявлений такого эффекта является \textbf{искусственное удлинение ответа}: модель начинает генерировать более длинные ответы не потому, что они содержат больше полезной информации, а потому, что большая длина начинает коррелировать с более высокой оценкой со стороны reward-модели.
-\end{itemize}
+    \vspace{0.4cm}
+    \textbf{Требования к методологии:}
+    \begin{enumerate}
+        \item Модель вознаграждения со смещением по длине
+        \item Модели с механизмом внутренних рассуждений
+        \item Варьирование размера модели и бюджета генерации
+        \item Оценка по двум метрикам: вознаграждение и точность
+    \end{enumerate}
 \end{frame}
 
-\begin{frame}{Предлагаемое исследование}
-\begin{itemize}
-    \item Предлагается исследовать, \textbf{подвержены ли reasoning-модели эффекту reward hacking}, проявляющемуся в \textbf{увеличении длины ответа}.
-
-    \item Помимо самого факта наличия данного эффекта, планируется изучить, \textbf{как именно reasoning-модели ведут себя в таком сценарии}.
-
-    \item Результатом исследования должно стать лучшее понимание того, характерен ли этот вид хакинга для reasoning-моделей и в каких формах он проявляется.
-\end{itemize}
+\section{Предложенное решение}
+\begin{frame}{Предложенное решение}
+    \textbf{Подход:} анализ устойчивости на основе методологии 
+    сверхоптимизации вознаграждения (Gao и др., 2023)
+    
+    \vspace{0.3cm}
+    \begin{enumerate}
+        \item \textbf{Дообучение с подкреплением} ---
+              оптимизация стратегии модели по сигналу от модели вознаграждения
+        \item \textbf{Исследование моделей с внутренним этапом рассуждения} 
+        \item \textbf{Два типа вознаграждения:}
+              \begin{itemize}
+                  \item Аппроксимация смещения по длине (функция насыщения)
+                  \item Модель вознаграждения со штрафом за длину
+              \end{itemize}
+        \item \textbf{Периодическая оценка} --- каждые 100 шагов 
+              измерение точности на расширенном бюджете генерации
+    \end{enumerate}
 \end{frame}
 
-\section{Эксперименты}
+\section{Дизайн эксперимента}
+\begin{frame}{Дизайн эксперимента}
+\small
 
-\begin{frame}{Данные для экспериментов}
+\textbf{Обновление стратегии:} используется алгоритм REINFORCE
+
+\[
+J(\theta)=\mathbb{E}_{y\sim \pi_\theta(\cdot|x)}[R(y)]
+\]
+
+\[
+\nabla_\theta J = \mathbb{E}\left[(R - b)\,\nabla_\theta \log \pi_\theta(y|x)\right]
+\]
+
+\[
+b \leftarrow 0.9\,b + 0.1\,\bar{R}
+\]
+
+\vspace{0.2cm}
+\textbf{Обновление весов модели:} используется LoRA (низкоранговая адаптация)
+
+Для матрицы весов $W \in \mathbb{R}^{d \times k}$ обновление задаётся как
+\[
+W' = W + \Delta W, \qquad \Delta W = BA
+\]
+где
+\[
+B \in \mathbb{R}^{d \times r}, \qquad A \in \mathbb{R}^{r \times k}, \qquad r \ll \min(d,k)
+\]
+\end{frame}
+
+\begin{frame}{Дизайн эксперимента}
+    \begin{table}[h]
+    \centering
+    \footnotesize
+    \begin{tabular}{lccc}
+        \hline
+        \textbf{Модель} & \textbf{Параметры} & \textbf{Архитектура} \\
+        \hline
+        Qwen3-0.6B & 0.6B & Qwen3 \\
+        Qwen3-8B & 8B & Qwen3 \\
+        DeepSeek-R1-Llama-8B & 8B & Llama3.1 \\
+        Qwen3-14B & 14B & Qwen3 \\
+        \hline
+    \end{tabular}
+    \end{table}
+    
+    \vspace{0.2cm}
+    \begin{columns}
+        \begin{column}{0.5\textwidth}
+            \textbf{Варьируемые параметры:}
+            \begin{itemize}
+                \item Бюджет генерации: 256, 512, 1024
+                \item Тип вознаграждения: функция длины / модель вознаграждения + штраф
+                \item Размер модели: 0.6B--14B
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.5\textwidth}
+            \textbf{Фиксированные параметры:}
+            \begin{itemize}
+                \item Бюджет генерации на валидации: 2048 
+                \item 400 шагов обучения
+                \item LoRA $r{=}16$
+                \item 50 задач (30 простых + 20 сложных)
+            \end{itemize}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+
+\begin{frame}{Дизайн эксперимента}
     \begin{table}[h]
     \centering
     \footnotesize
@@ -145,82 +209,31 @@ J(\theta) = \mathbb{E}_{y \sim \pi_\theta(\cdot|x)}[R(y)]
         Единицы и даты & 3 & Seconds in one minute? \\
         \hline
         \multicolumn{3}{l}{\textit{Сложные задачи}} \\
-        Tracking Objects & 4 & Alice, Bob swap presents... \\
-        Multi-Step Arithmetic & 4 & ((2+3)*4-6)/2+1 = ? \\
-        Navigate & 3 & 3 north, 2 east... return? \\
-        Web of Lies & 3 & Alice lies. Bob says... \\
-        Logical Deduction & 2 & Red left of blue. Middle? \\
-        Date Understanding & 2 & March 5 + 15 days = ? \\
-        GSM8K & 2 & Sold 48 clips in April... \\
+        Отслеживание объектов & 4 & Alice, Bob swap presents... \\
+        Арифметика & 4 & ((2+3)*4-6)/2+1 = ? \\
+        Навигация & 3 & 3 north, 2 east... return? \\
+        Цепочки лжи & 3 & Alice lies. Bob says... \\
+        Логический вывод & 2 & Red left of blue. Middle? \\
+        Понимание дат & 2 & March 5 + 15 days = ? \\
+        Текстовые задачи & 2 & Sold 48 clips in April... \\
         \hline
         \textbf{Итого} & \textbf{50} & \\
         \hline
     \end{tabular}
     \end{table}
-\end{frame}
-
-
-\begin{frame}{Модели в экспериментах}
-    \begin{table}[h]
-    \centering
+    
+    \vspace{0.2cm}
     \small
-    \begin{tabular}{lccc}
-        \hline
-        \textbf{Модель} & \textbf{Параметры} & \textbf{Тип} & \textbf{Reasoning} \\
-        \hline
-        Qwen3-0.6B & 0.6B & Instruct & \texttt{<think>} \\
-        Qwen3-8B & 8B & Instruct & \texttt{<think>} \\
-        DeepSeek-R1-Distill-Llama-8B & 8B & Instruct & \texttt{<think>} \\
-        Qwen3-14B & 14B & Instruct & \texttt{<think>} \\
-        \hline
-        RewardModel & 109M & BERT & --- \\
-        \hline
-    \end{tabular}
-    \end{table}
-
-    \vspace{0.5em}
-    \begin{itemize}
-        \item В обучающих экспериментах будет рассматриваться несколько ограничений на длину генерации: \textbf{256}, \textbf{512} и \textbf{1024} токенов.
-        \item При этом на этапе \textbf{evaluation} для всех моделей будет использоваться единое ограничение: \textbf{4096} токенов.
-    \end{itemize}
+    Сложные задачи - из бенчмарка BIG-Bench Hard.
+    Без рассуждений точность на них падает.
+    
 \end{frame}
 
-\begin{frame}{Метод в экспериментах: REINFORCE + LoRA}
-\small
+\section{Результаты}
 
-\textbf{Обновление политики:} используется REINFORCE-style policy gradient
-\[
-\nabla_\theta J = \mathbb{E}\left[(R - b)\,\nabla_\theta \log \pi_\theta(y|x)\right]
-\]
-
-\vspace{0.3cm}
-\textbf{LoRA: low-rank adaptation}
-
-Для матрицы весов $W \in \mathbb{R}^{d \times k}$ обновление задаётся как
-\[
-W' = W + \Delta W, \qquad \Delta W = BA
-\]
-где
-\[
-B \in \mathbb{R}^{d \times r}, \qquad A \in \mathbb{R}^{r \times k}, \qquad r \ll \min(d,k)
-\]
-
-\begin{itemize}
-    \item исходные веса $W$ замораживаются
-    \item обучаются только малые матрицы $A$ и $B$
-    \item $BA$ задаёт low-rank поправку к исходным весам
-    \item число обучаемых параметров резко уменьшается
-    \item снижаются требования к памяти и вычислениям
-\end{itemize}
-
-
-\end{frame}
-
-\section*{Reward Model}
-
-\begin{frame}{Length Bias в Reward Model}
+\begin{frame}{Результаты: Модель вознаграждения}
     \begin{center}
-        \includegraphics[width=0.70\textwidth]{reward_model_2.png}
+        \includegraphics[width=0.75\textwidth]{reward_model_2.png}
     \end{center}
     
     \vspace{-0.2cm}
@@ -230,17 +243,19 @@ B \in \mathbb{R}^{d \times r}, \qquad A \in \mathbb{R}^{r \times k}, \qquad r \l
             \centering
             \textbf{RewardModel} \\
             BERT, 109M параметров \\[0.2cm]
-            Дистиллирована из (DeBERTa-v3-large, 400M) \\
+            Дистиллирована из \\
+            (DeBERTa-v3-large, 400M)
         \end{column}
         \begin{column}{0.5\textwidth}
             \centering
-            $RM(w) = \dfrac{23.2 \cdot w}{w + 54.8} - 9.56$
+            Метод наименьших квадратов: \\[0.2cm]
+            $\min\limits_{a,b,c} \sum\limits_i \left( y_i - \dfrac{a \cdot w_i}{w_i + b} - c \right)^2$ \\[0.3cm]
+            $RM(w) = \dfrac{23.2 \cdot w}{w + 54.8} - 9.56$ \\[0.1cm]
         \end{column}
     \end{columns}
 \end{frame}
 
-
-\begin{frame}{Qwen3-8B: Hand-crafted reward, 512 токенов}
+\begin{frame}{Результаты: Qwen3-8B, 512 токенов}
     
     \vspace{-0.2cm}
     $$R = \frac{23.2 \cdot |\text{content}|}{|\text{content}| + 54.8} - 9.56, \quad \text{content} = \text{текст после } \texttt{</think>}$$
@@ -265,7 +280,7 @@ B \in \mathbb{R}^{d \times r}, \qquad A \in \mathbb{R}^{r \times k}, \qquad r \l
     
     \vspace{0.2cm}
     \small
-    \textbf{Пример ответа после обучения} (think удалён, reasoning в тексте):
+    \textbf{Пример ответа после обучения} (<think> удалён, рассуждения в тексте):
     
     \vspace{0.1cm}
     \texttt{\footnotesize
@@ -275,12 +290,12 @@ B \in \mathbb{R}^{d \times r}, \qquad A \in \mathbb{R}^{r \times k}, \qquad r \l
     So the answer is Blue.}
     
     \vspace{0.2cm}
-    \textbf{Вывод:} Think Rate 90\%$\rightarrow$0\%, но accuracy 100\%. 
+    \textbf{Вывод:} Рассуждения исчезли, но точнось 100\%. 
     Модель \textbf{удалила} теги \texttt{<think>} и перенесла рассуждения 
     в видимый ответ.
 \end{frame}
 
-\begin{frame}{Qwen3-8B: RM + cost penalty, 512 токенов}
+\begin{frame}{Результаты: Qwen3-8B, 512 токенов}
     
     \vspace{-0.2cm}
     $$R = RM(\text{content}) - \alpha \cdot N_{\text{tokens}}, \quad \alpha = 0.02$$
@@ -303,203 +318,147 @@ B \in \mathbb{R}^{d \times r}, \qquad A \in \mathbb{R}^{r \times k}, \qquad r \l
             \end{figure}
         \end{column}
     \end{columns}
-    
+        
     \vspace{0.2cm}
-    \small
-    \textbf{Пример ответа после обучения} (think удалён, reasoning в тексте):
-    
-    \vspace{0.2cm}
-    \textbf{Вывод:} Think Rate 90\%$\rightarrow$0\%, accuracy 100\%. 
-    Результат аналогичен hand-crafted reward - модель \textbf{удалила} 
+    \textbf{Вывод:} Рассуждения исчезли, но точнось 100\%. 
+    Результат аналогичен предыдщему эксперименту - модель \textbf{удалила} 
     \texttt{<think>} и перенесла рассуждения в видимый ответ.
 \end{frame}
 
-\begin{frame}{Qwen3-8B: RM + cost penalty, 1024 токена}
-    \vspace{-0.2cm}
-    $$R = RM(\text{content}) - \alpha \cdot N_{\text{tokens}}, \quad \alpha = 0.02$$
-    \centering\small RM: RewardModel (BERT, 109M)
+\begin{frame}{Результаты: Qwen3-8B, 1024 токена}
+    \vspace{-0.3cm}
+    $$R = RM(\text{content}) - 0.02 \cdot N_{\text{tokens}}$$
     
     \begin{columns}
-        \begin{column}{0.36\textwidth}
-            \begin{figure}
-                \includegraphics[width=\textwidth]{8b_think_rate_eval_B3.png}
-            \end{figure}
+        \begin{column}{0.33\textwidth}
+            \includegraphics[width=\textwidth]{8b_think_rate_eval_B3.png}
         \end{column}
-        \begin{column}{0.36\textwidth}
-            \begin{figure}
-                \includegraphics[width=\textwidth]{8b_think_len_eval_B3.png}
-            \end{figure}
+        \begin{column}{0.33\textwidth}
+            \includegraphics[width=\textwidth]{8b_think_len_eval_B3.png}
         \end{column}
-        \begin{column}{0.36\textwidth}
-            \begin{figure}
-                \includegraphics[width=\textwidth]{8b_rm_score_eval_B3.png}
-            \end{figure}
+        \begin{column}{0.33\textwidth}
+            \includegraphics[width=\textwidth]{8b_rm_score_eval_B3.png}
         \end{column}
     \end{columns}
     
-    \vspace{0.3cm}
-    \textbf{Вывод:} при бюджете 1024 токена RM Score вырос,
-    но accuracy упало до 60\%.
-\end{frame}
-
-\begin{frame}{Примеры деградации: 1024 токена}
-    \textbf{1. Неправильный ответ после долгих рассуждений:}
-    
-    \textit{``What is 12 + 6 * 3 - 4 / 2?''} \quad Правильный ответ: \textbf{28}
+    \vspace{0.1cm}
+    \small
+    \textbf{Вознаграждение выросло, точность упала до 60\%.}
     
     \vspace{0.1cm}
-    \texttt{\footnotesize
-    Okay, so the problem is 12 + 6 * 3 - 4 / 2...
-    PEMDAS: Multiplication and Division first... 22}
-    
-    \vspace{0.4cm}
-    \textbf{2. Повторения:}
-    
-    \textit{``Alice, Bob swap presents... What does Bob have?''}
+    \scriptsize
+    \flushleft
+    \textbf{1.} \textit{``What is 12+6*3-4/2?''} Правильный ответ: 28 \\
+    \texttt{Okay, so the problem is 12 + 6 * 3 - 4 / 2... 
+    PEMDAS: Multiplication and Division first...
+    Nope Fatal Gameplay Anime Meal Guess Nope... \textbf{22}}
     
     \vspace{0.1cm}
-    \texttt{\footnotesize
-    Okay, let me try to figure this out...
+    \textbf{2.} \textit{``Alice, Bob swap presents... What does Bob have?''} \\
+    \texttt{Okay, let me try to figure this out...
     Gifts Holder Gifts Clarification Gifts Gifts Holder
-    Gifts Holder Gifts Holder Gifts Holder Gifts Holder
     Gifts Holder Gifts Holder Gifts Holder Gifts Holder...}
-    
 \end{frame}
 
-\begin{frame}{DeepSeek-Llama-8B: RM + cost penalty, 1024 токена}
-    \vspace{-0.2cm}
-    $$R = RM(\text{content}) - \alpha \cdot N_{\text{tokens}}, \quad \alpha = 0.02$$
-    \centering\small RM: RewardModel (BERT, 109M)
-
+\begin{frame}{Результаты: DeepSeek-Llama-8B, 1024 токена}
+    \vspace{-0.3cm}
+    $$R = RM(\text{content}) - 0.02 \cdot N_{\text{tokens}}$$
+    
     \begin{columns}
-        \begin{column}{0.36\textwidth}
-            \begin{figure}
-                \includegraphics[width=\textwidth]{deepseek_think_rate_eval_B3.png}
-            \end{figure}
+        \begin{column}{0.33\textwidth}
+            \includegraphics[width=\textwidth]{llama_think_rate.png}
         \end{column}
-        \begin{column}{0.36\textwidth}
-            \begin{figure}
-                \includegraphics[width=\textwidth]{deepseek_think_len_eval_B3.png}
-            \end{figure}
+        \begin{column}{0.33\textwidth}
+            \includegraphics[width=\textwidth]{llama_think_len.png}
         \end{column}
-        \begin{column}{0.36\textwidth}
-            \begin{figure}
-                \includegraphics[width=\textwidth]{deepseek_rm_score_eval_B3.png}
-            \end{figure}
+        \begin{column}{0.33\textwidth}
+            \includegraphics[width=\textwidth]{llama_RM.png}
         \end{column}
     \end{columns}
-
-    \vspace{0.3cm}
-    \textbf{Вывод:} при бюджете 1024 токена RM Score вырос,
-    но accuracy упало до 80\%.
+    
+    \vspace{0.1cm}
+    \small
+    \textbf{Вознаграждение выросло, точность упала до 80\%.}
+    
+    \vspace{0.1cm}
+    \scriptsize
+    \flushleft
+    \textbf{Пример:} \textit{``Take 2 steps north, 4 east, 2 south, 3 west, 1 west. Return?''} Ответ: Yes \\
+    \vspace{0.05cm}
+    \texttt{<think> First, I will calculate the total north and south steps... </think>} \\
+    \texttt{To determine if you return, let's analyze:} \\
+    \texttt{1. North and South: (2 - 2 = 0)} \\
+    \texttt{2. East and West: (3 + 1 = 4), so (4 - 4 = 0)} \\
+    \texttt{You do not return to the starting point. \textbf{[No]}}
+    
+    \vspace{0.1cm}
+    \small
+    Рассуждения \textbf{вынесены} из \texttt{<think>} в ответ --- 
+    скрытый захват: модель увеличивает длину оцениваемой части.
 \end{frame}
 
-\begin{frame}[fragile]{Примеры деградации: 1024 токена}
-\small
-\textbf{1. Неправильный ответ после долгих рассуждений, часть reasoning вышло в content:}
-
-\vspace{0.15cm}
-\begin{verbatim}
-<think>
-First, I will calculate the total north and south steps...
-Next, I will calculate the total east and west steps...
-Since there is no net movement in the north-south direction and ... , the final position is ...
-</think>
-
-To determine if you return to the starting point, let's analyze the movements:
-1. North and South Steps: ... (2 - 2 = 0)
-2. East and West Steps: ... (3 + 1 = 4), so (4 - 4 = 0)
-
-Since there is no net movement in either direction, you do not return to the starting point.
-[No]
-\end{verbatim}
-\end{frame}
-
-\section{Вывод}
-
-\begin{frame}{Сводная таблица результатов}
+\begin{frame}{Результаты}
     \begin{table}[h]
     \centering
-    \footnotesize
-    \begin{tabular}{ll|cccc}
+    \scriptsize
+    \begin{tabular}{ll|ccc|p{2.5cm}}
     \hline
-    & & \textbf{256} & \textbf{512} & \textbf{1024} & \textbf{2048} \\
+    \textbf{Модель} & & \textbf{256} & \textbf{512} & \textbf{1024} & \textbf{Тип} \\
     \hline
-    \textbf{Qwen3 0.6B} & HC & сжатие & сжатие & --- & --- \\
-                   & RM & коллапс   & коллапс & коллапс & --- \\
+    \textbf{Qwen3 0.6B} & ФД & сжатие & сжатие & --- & --- \\
+                         & МВ & коллапс & коллапс & коллапс & --- \\
     \hline
-    \textbf{Qwen3 8B}   & HC & удаление & удаление & удаление & --- \\
-                   & RM & удаление & удаление & \textbf{hacking} & --- \\
+    \textbf{Qwen3 8B}   & ФД & удал. & удал. & удал. & --- \\
+                         & МВ & удал. & удал. & \textbf{захват} & агрессивный \\
     \hline
-    \textbf{DeepSeek-Llama-8B}   & HC & сжатие & сжатие & сжатие & --- \\
-                   & RM & сжатие & сжатие & \textbf{hacking} & --- \\
+    \textbf{DS-Llama-8B} & ФД & сжатие & сжатие & сжатие & --- \\
+                         & МВ & сжатие & сжатие & \textbf{захват} & скрытый \\
     \hline
-    \textbf{Qwen3 14B}  & HC & сжатие & сжатие & сжатие & --- \\
-                   & RM & устойчива & устойчива & устойчива & \textbf{коллапс} \\
+    \textbf{Qwen3 14B}  & ФД & сжатие & сжатие & сжатие & --- \\
+                         & МВ & устойч. & устойч. & устойч. & --- \\
     \hline
     \end{tabular}
     \end{table}
     
-    \vspace{0.3cm}
+    \vspace{0.1cm}
+    \small
+    ФД --- функция длины, МВ --- модель вознаграждения + штраф
+    \vspace{0.1cm}
     \begin{itemize}
-        \item \textbf{Сжатие} --- теги \texttt{<think>} сохраняются, содержимое заметно сокращается
-        \item \textbf{Удаление} --- теги \texttt{<think>} удаляются полностью
-        \item \textbf{Hacking} --- RM Score $\uparrow$, accuracy $\downarrow$
-        \item \textbf{Коллапс} --- RM Score $\downarrow$, accuracy $\downarrow$ (14B: acc 15\%, 800 шагов)
+        \item \textbf{Сжатие} --- рассуждения сокращаются
+        \item \textbf{Удаление} --- рассуждения удаляются полностью
+        \item \textbf{Захват} --- оценка $\uparrow$, точность $\downarrow$
+        \item \textbf{Коллапс} --- оценка $\downarrow$, точность $\downarrow$
+        \item \textbf{Агрессивный} --- удаление рассуждений, повторения
+        \item \textbf{Скрытый} --- рассуждения вынесены в ответ
     \end{itemize}
 \end{frame}
 
-\begin{frame}{Типы reward hacking}
-\footnotesize
-\begin{table}[h]
-\centering
-\begin{tabular}{p{2.8cm}|p{3.5cm}|p{3.5cm}}
-\hline
-\textbf{Модель} & \textbf{Наблюдение} & \textbf{Интерпретация} \\
-\hline
-Qwen3 8B &
-неправильный ответ, повторения, удаление \texttt{<think>} &
-агрессивный exploit: reasoning удаляется
-\\
-\hline
-DeepSeek-Llama-8B &
-неправильный ответ, \texttt{<think>} сохранён, reasoning частично вынесен в answer &
-мягкий exploit: reasoning переносится в reward-учитываемый ответ
-\\
-\hline
-\end{tabular}
-\end{table}
-\vspace{0.2cm}
-\begin{itemize}
-    \item Qwen3 8B --- более деструктивный exploit
-    \item DeepSeek-Llama-8B --- более скрытый exploit
-\end{itemize}
+\section{Заключение}
+\begin{frame}{Заключение}
+    \small
+    \textbf{Задача 1:} Анализ литературы --- смещение по длине 
+    выявлено как основная уязвимость.
+    
+    \vspace{0.15cm}
+    \textbf{Задача 2:} Подтверждено смещение в модели 
+    вознаграждения.
+    
+    \vspace{0.15cm}
+    \textbf{Задача 3:} Разработан экспериментальный стенд 
+    для пентеста механизмов вознаграждения.
+    
+    \vspace{0.15cm}
+    \textbf{Задача 4:} Пентест на 4 моделях, 2 архитектурах, 
+    3 бюджетах. Захват при $\geq$1024 токенах на моделях 8B.
+    
+    \vspace{0.15cm}
+    \textbf{Задача 5:} Классифицированы паттерны: 
+    сжатие, удаление, агрессивный захват (точность 60\%), 
+    скрытый захват (точность 80\%).
+    
+    \vspace{0.3cm}
+    \textbf{Цель достигнута:} механизмы вознаграждения неустойчивы 
+    к смещению по длине в моделях 8B при бюджете $\geq$1024 токенов.
 \end{frame}
 
-\begin{frame}{Выводы}
-    \begin{enumerate}
-        \item \textbf{Reasoning-модели уязвимы к reward hacking.}
-              При оптимизации с RM, имеющей length bias,
-              Qwen3-8B удаляет \texttt{<think>} и теряет 30\% accuracy,
-              при этом RM Score растёт.
-
-        \item \textbf{Бюджет генерации --- критический параметр безопасности.}
-              512 токенов --- модель адаптируется без потери качества.
-              1024 токена --- модель эксплуатирует length bias.
-
-        \item \textbf{Три паттерна взлома вознаграждения:}
-              сжатие reasoning, удаление reasoning,
-              производство логически некорректных, но внешне правдоподобных цепочек вывода,
-              многократные повторения.
-    \end{enumerate}
-\end{frame}
-
-
-
-\begin{frame}
-    \vfill
-    \begin{center}
-        {\LARGE \textit{Спасибо за внимание!}}
-    \end{center}
-    \vfill
-\end{frame}
